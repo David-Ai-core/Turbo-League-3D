@@ -359,6 +359,7 @@ function createEnemies() {
 
 let moveX = 0;
 let moveY = 0;
+let joystickActive = false;
 
 function canMove(x, z) {
   const r = PLAYER_RADIUS;
@@ -454,6 +455,7 @@ function updateJoystick(e) {
 
 function releaseJoystick() {
   joyTouch = null;
+  joystickActive = false;
   moveX = 0;
   moveY = 0;
   stick.style.transform = "translate(0,0)";
@@ -656,14 +658,22 @@ window.addEventListener("keyup", e => {
 });
 
 function keyboardMovement() {
-  moveX = 0;
-  moveY = 0;
+  const x =
+    (keys["d"] || keys["arrowright"] ? 1 : 0) -
+    (keys["a"] || keys["arrowleft"] ? 1 : 0);
 
-  if (keys["w"] || keys["arrowup"]) moveY = -1;
-  if (keys["s"] || keys["arrowdown"]) moveY = 1;
-  if (keys["a"] || keys["arrowleft"]) moveX = -1;
-  if (keys["d"] || keys["arrowright"]) moveX = 1;
-});
+  const y =
+    (keys["s"] || keys["arrowdown"] ? 1 : 0) -
+    (keys["w"] || keys["arrowup"] ? 1 : 0);
+
+  if (x !== 0 || y !== 0) {
+    moveX = x;
+    moveY = y;
+  } else if (!joystickActive) {
+    moveX = 0;
+    moveY = 0;
+  }
+}
 
 // =====================================
 // ENEMY AI
