@@ -1,469 +1,70 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Cat Maze FPS</title>
-<style>
-*{box-sizing:border-box}
-html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#10131a;color:white;font-family:Arial;touch-action:none}
-canvas{display:block}
-#game{position:fixed;inset:0}
-#hud{position:fixed;top:12px;left:12px;z-index:5;pointer-events:none;text-shadow:0 2px 4px black}
-#hud div{margin-bottom:7px;font-size:17px;font-weight:bold}
-#ammo{position:fixed;right:15px;bottom:18px;font-size:22px;font-weight:bold;text-shadow:0 2px 5px black;z-index:5;pointer-events:none}
-#crosshair{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);font-size:25px;z-index:4;pointer-events:none}
-#startScreen{position:fixed;inset:0;background:linear-gradient(#111b,#080b);z-index:20;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px}
-.panel{background:#202633;border:2px solid #d6a52b;border-radius:18px;padding:25px;max-width:500px;width:100%;box-shadow:0 10px 40px #000}
-h1{color:#f3c64b;margin:0 0 10px;font-size:35px}
-button{border:0;border-radius:12px;background:#dcae31;color:#171717;font-weight:bold;font-size:16px;padding:13px 18px;touch-action:none}
-#startBtn{font-size:21px;margin-top:15px;padding:16px 35px}
-#mobile{display:none;position:fixed;inset:0;z-index:8;pointer-events:none}
-#stickArea{position:absolute;left:18px;bottom:25px;width:145px;height:145px;border-radius:50%;background:#ffffff20;border:2px solid #ffffff70;pointer-events:auto;touch-action:none}
-#stick{position:absolute;left:43px;top:43px;width:55px;height:55px;border-radius:50%;background:#ffffff80;border:2px solid white}
-#lookArea{position:absolute;left:35%;right:0;top:0;bottom:0;pointer-events:auto;touch-action:none}
-#buttons{position:absolute;right:15px;bottom:20px;display:grid;grid-template-columns:repeat(2,75px);gap:9px;pointer-events:auto}
-#buttons button{width:75px;height:65px;padding:5px;background:#ffffffcc}
-#buttons button:active{background:#f4c447}
-#dashBar{width:150px;height:12px;background:#333;border:1px solid white;border-radius:8px;overflow:hidden}
-#dashFill{height:100%;width:100%;background:#48d9ff}
-#message{position:fixed;top:25%;left:50%;transform:translateX(-50%);font-size:27px;font-weight:bold;text-shadow:0 2px 5px black;z-index:6;pointer-events:none;text-align:center}
-@media(pointer:coarse){
- #mobile{display:block}
-}
-@media(orientation:portrait) and (pointer:coarse){
- #stickArea{width:120px;height:120px}
- #stick{left:34px;top:34px;width:48px;height:48px}
- #buttons{grid-template-columns:repeat(2,65px);right:8px;bottom:12px}
- #buttons button{width:65px;height:58px;font-size:13px}
- #hud div{font-size:14px}
-}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>MAZE OPS - FPS</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div id="game"></div>
-<div id="hud">
- <div id="level">LEVEL 1 / 10</div>
- <div id="cats">CATS LEFT: 5</div>
- <div>DASH ENERGY</div>
- <div id="dashBar"><div id="dashFill"></div></div>
-</div>
-<div id="crosshair">+</div>
-<div id="ammo">35 / ∞</div>
-<div id="message"></div>
-<div id="mobile">
- <div id="lookArea"></div>
- <div id="stickArea"><div id="stick"></div></div>
- <div id="buttons">
-  <button id="fireBtn">FIRE</button>
-  <button id="dashBtn">DASH</button>
-  <button id="reloadBtn">RELOAD</button>
- </div>
-</div>
-<div id="startScreen">
- <div class="panel">
-  <h1>🐈 CAT MAZE FPS</h1>
-  <p>Find and tag all five cats in each maze.</p>
-  <p><b>Computer:</b> WASD to move · Mouse to look · S to fire · R to reload · Space to dash.</p>
-  <p><b>iPad:</b> Left joystick to move · Drag the screen to look · Use the buttons to play.</p>
-  <p>Complete all 10 levels. Good luck!</p>
-  <button id="startBtn">START GAME</button>
- </div>
-</div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r152/three.min.js"></script>
-<script>
-(() => {
-"use strict";
-const gameEl=document.getElementById("game");
-const startScreen=document.getElementById("startScreen");
-const startBtn=document.getElementById("startBtn");
-const ammoEl=document.getElementById("ammo");
-const catsEl=document.getElementById("cats");
-const levelEl=document.getElementById("level");
-const dashFill=document.getElementById("dashFill");
-const messageEl=document.getElementById("message");
 
-const scene=new THREE.Scene();
-scene.background=new THREE.Color(0x8294a5);
-scene.fog=new THREE.Fog(0x8294a5,8,27);
-const camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,.1,100);
-camera.rotation.order="YXZ";
-camera.position.set(1,1.65,1);
-scene.add(camera);
-const renderer=new THREE.WebGLRenderer({antialias:true});
-renderer.setSize(innerWidth,innerHeight);
-renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-renderer.shadowMap.enabled=true;
-renderer.shadowMap.type=THREE.PCFSoftShadowMap;
-gameEl.appendChild(renderer.domElement);
+  <div id="game">
+    <div id="hud">
+      <div class="hud-box">
+        <span>HEALTH</span>
+        <strong id="health">100</strong>
+      </div>
+      <div class="hud-box">
+        <span>LEVEL</span>
+        <strong id="level">1 / 5</strong>
+      </div>
+      <div class="hud-box">
+        <span>ENERGY CELLS</span>
+        <strong id="ammo">35 / ∞</strong>
+      </div>
+    </div>
 
-scene.add(new THREE.HemisphereLight(0xffffff,0x566070,2));
-const sun=new THREE.DirectionalLight(0xffffff,2);
-sun.position.set(5,12,4);
-sun.castShadow=true;
-scene.add(sun);
+    <div id="message">FIND THE KEY TO UNLOCK THE EXIT</div>
+    <div id="crosshair">+</div>
 
-const wallMat=new THREE.MeshStandardMaterial({color:0x465363,roughness:.9});
-const floorMat=new THREE.MeshStandardMaterial({color:0x777b79,roughness:1});
-let walls=[];
-let cats=[];
-let level=1;
-let ammo=35;
-let reloading=false;
-let playing=false;
-let dashEnergy=100;
-let dashTimer=0;
-let yaw=0,pitch=0;
-let locked=false;
-let moveX=0,moveY=0;
-let joystickPointer=null;
-let lookPointer=null;
-let lastLookX=0,lastLookY=0;
-let fireHeld=false;
-let keys={};
-let messageTimer=0;
-let shootCooldown=0;
+    <div id="controls">
+      <div id="joystick">
+        <div id="stick"></div>
+      </div>
 
-const raycaster=new THREE.Raycaster();
-const clock=new THREE.Clock();
-const maze=[
-"###############",
-"#.............#",
-"#.###.###.###.#",
-"#...#.....#...#",
-"###.#.###.#.###",
-"#...#...#.#...#",
-"#.#####.#.###.#",
-"#.......#.....#",
-"#.###.###.###.#",
-"#...#.....#...#",
-"###.#.###.#.###",
-"#...#...#.#...#",
-"#.###.###.###.#",
-"#.............#",
-"###############"
-];
+      <div id="lookArea"></div>
 
-function makeBox(x,y,z,sx,sy,sz,mat,cast=true){
- const m=new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz),mat);
- m.position.set(x,y,z);
- m.castShadow=cast;
- m.receiveShadow=true;
- scene.add(m);
- return m;
-}
-function clearLevel(){
- for(const w of walls)scene.remove(w);
- walls=[];
- for(const c of cats)scene.remove(c.group);
- cats=[];
-}
-function buildLevel(){
- clearLevel();
- walls.push(makeBox(0,-.15,0,30,.3,30,floorMat,false));
- for(let z=0;z<15;z++){
-  for(let x=0;x<15;x++){
-   if(maze[z][x]==="#"){
-    walls.push(makeBox((x-7)*2,1,(z-7)*2,2,2,2,wallMat));
-   }
-  }
- }
- const positions=[[-5,-5],[5,-5],[-5,5],[5,5],[0,5]];
- for(let i=0;i<5;i++){
-  const [x,z]=positions[i];
-  const cat=createCat();
-  cat.group.position.set(x,0,z);
-  cat.homeX=x;cat.homeZ=z;
-  cat.phase=Math.random()*6.28;
-  cat.speed=.55+i*.06;
-  cats.push(cat);
- }
- camera.position.set(-11,1.65,-11);
- yaw=0;pitch=0;
- camera.rotation.set(pitch,yaw,0);
- ammo=35;reloading=false;
- updateHUD();
-}
-function createCat(){
- const group=new THREE.Group();
- const canvas=document.createElement("canvas");
- canvas.width=256;canvas.height=256;
- const ctx=canvas.getContext("2d");
- ctx.clearRect(0,0,256,256);
- ctx.fillStyle="#e98722";
- ctx.beginPath();
- ctx.moveTo(42,85);ctx.lineTo(48,12);ctx.lineTo(105,55);
- ctx.quadraticCurveTo(128,42,151,55);
- ctx.lineTo(208,12);ctx.lineTo(214,85);
- ctx.quadraticCurveTo(245,120,220,185);
- ctx.quadraticCurveTo(190,240,128,238);
- ctx.quadraticCurveTo(65,240,36,185);
- ctx.quadraticCurveTo(10,130,42,85);
- ctx.fill();
- ctx.strokeStyle="#793d16";ctx.lineWidth=8;ctx.stroke();
- ctx.fillStyle="#ffbd73";
- ctx.beginPath();ctx.ellipse(128,145,75,66,0,0,Math.PI*2);ctx.fill();
- ctx.fillStyle="#17232c";
- ctx.beginPath();ctx.ellipse(91,130,10,16,0,0,Math.PI*2);ctx.fill();
- ctx.beginPath();ctx.ellipse(165,130,10,16,0,0,Math.PI*2);ctx.fill();
- ctx.fillStyle="#ef7772";
- ctx.beginPath();ctx.moveTo(117,157);ctx.lineTo(139,157);ctx.lineTo(128,169);ctx.fill();
- ctx.strokeStyle="#542c20";ctx.lineWidth=5;
- ctx.beginPath();ctx.moveTo(128,169);ctx.lineTo(128,184);ctx.lineTo(110,190);ctx.moveTo(128,184);ctx.lineTo(146,190);ctx.stroke();
- ctx.strokeStyle="#f9e0b9";ctx.lineWidth=3;
- for(let i=0;i<3;i++){
-  ctx.beginPath();ctx.moveTo(72,167+i*8);ctx.lineTo(18,155+i*17);ctx.stroke();
-  ctx.beginPath();ctx.moveTo(184,167+i*8);ctx.lineTo(238,155+i*17);ctx.stroke();
- }
- const texture=new THREE.CanvasTexture(canvas);
- const material=new THREE.MeshBasicMaterial({map:texture,transparent:true,side:THREE.DoubleSide});
- const sprite=new THREE.Sprite(material);
- sprite.scale.set(1.5,1.5,1);
- sprite.position.y=1.25;
- group.add(sprite);
- scene.add(group);
- return {group,sprite,homeX:0,homeZ:0,phase:0,speed:1,alive:true};
-}
-</script>
-function updateHUD(){
- levelEl.textContent="LEVEL "+level+" / 10";
- catsEl.textContent="CATS LEFT: "+cats.filter(c=>c.alive).length;
- ammoEl.textContent=ammo+" / ∞"+(reloading?"  RELOADING":"");
- dashFill.style.width=dashEnergy+"%";
-}
-function sayMessage(text,duration=1400){
- messageEl.textContent=text;
- messageTimer=duration;
-}
-function sound(freq=500,duration=.08,type="square",volume=.05){
- try{
-  const AC=window.AudioContext||window.webkitAudioContext;
-  if(!window.audioCtx)window.audioCtx=new AC();
-  const ctx=window.audioCtx;
-  if(ctx.state==="suspended")ctx.resume();
-  const osc=ctx.createOscillator();
-  const gain=ctx.createGain();
-  osc.type=type;osc.frequency.value=freq;
-  gain.gain.setValueAtTime(volume,ctx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+duration);
-  osc.connect(gain);gain.connect(ctx.destination);
-  osc.start();osc.stop(ctx.currentTime+duration);
- }catch(e){}
-}
-function reload(){
- if(!playing||reloading||ammo===35)return;
- reloading=true;updateHUD();
- sayMessage("RELOADING!");
- sound(250,.18,"sawtooth");
- if("speechSynthesis" in window){
-  speechSynthesis.cancel();
-  const utterance=new SpeechSynthesisUtterance("Reloading!");
-  utterance.rate=1.1;speechSynthesis.speak(utterance);
- }
- setTimeout(()=>{
-  ammo=35;reloading=false;updateHUD();sound(700,.1);
- },1400);
-}
-function shoot(){
- if(!playing||reloading||ammo<=0||shootCooldown>0)return;
- ammo--;shootCooldown=.22;updateHUD();
- sound(115,.09,"sawtooth",.07);
- raycaster.setFromCamera(new THREE.Vector2(0,0),camera);
- const targets=cats.filter(c=>c.alive).map(c=>c.sprite);
- const hits=raycaster.intersectObjects(targets,false);
- if(hits.length){
-  const cat=cats.find(c=>c.sprite===hits[0].object);
-  if(cat&&cat.alive){
-   cat.alive=false;cat.group.visible=false;
-   sound(800,.12,"sine");
-   sayMessage("CAT TAGGED!",700);
-   updateHUD();
-   if(cats.every(c=>!c.alive))finishLevel();
-  }
- }
-}
-function finishLevel(){
- if(level>=10){
-  playing=false;
-  sayMessage("🏆 YOU COMPLETED ALL 10 LEVELS!",5000);
-  setTimeout(()=>startScreen.style.display="flex",1800);
-  document.querySelector(".panel").innerHTML=
-   "<h1>🏆 VICTORY!</h1><p>You completed all 10 levels!</p><button onclick='location.reload()'>PLAY AGAIN</button>";
-  return;
- }
- playing=false;
- sayMessage("LEVEL "+level+" COMPLETE!",1600);
- setTimeout(()=>{
-  level++;buildLevel();playing=true;
-  sayMessage("LEVEL "+level,1200);
- },1600);
-}
-function isWallAt(x,z){
- const gx=Math.round(x/2+7);
- const gz=Math.round(z/2+7);
- if(gx<0||gz<0||gx>=15||gz>=15)return true;
- return maze[gz][gx]==="#";
-}
-function movePlayer(dt){
- let forward=0,side=0;
- if(keys.KeyW||keys.ArrowUp)forward+=1;
- if(keys.ArrowDown)forward-=1;
- if(keys.KeyA||keys.ArrowLeft)side-=1;
- if(keys.KeyD||keys.ArrowRight)side+=1;
- forward+=moveY;side+=moveX;
- const len=Math.hypot(forward,side);
- if(len>1){forward/=len;side/=len}
- let speed=dashTimer>0?10:4.1;
- const dx=(Math.sin(yaw)*forward+Math.cos(yaw)*side)*speed*dt;
- const dz=(Math.cos(yaw)*forward-Math.sin(yaw)*side)*speed*dt;
- const px=camera.position.x,pz=camera.position.z;
- if(!isWallAt(px+dx,pz))camera.position.x+=dx;
- if(!isWallAt(camera.position.x,pz+dz))camera.position.z+=dz;
-}
-function dash(){
- if(!playing||dashEnergy<25||dashTimer>0)return;
- dashEnergy-=25;dashTimer=.23;
- sound(180,.15,"sawtooth");updateHUD();
-}
-function updateCats(dt,time){
- for(const c of cats){
-  if(!c.alive)continue;
-  const a=time*.65+c.phase;
-  const tx=c.homeX+Math.sin(a);
-  const tz=c.homeZ+Math.cos(a*.8);
-  const dx=tx-c.group.position.x;
-  const dz=tz-c.group.position.z;
-  const d=Math.hypot(dx,dz);
-  if(d>.05){
-   const step=Math.min(d,c.speed*dt);
-   const nx=c.group.position.x+dx/d*step;
-   const nz=c.group.position.z+dz/d*step;
-   if(!isWallAt(nx,nz)){
-    c.group.position.x=nx;c.group.position.z=nz;
-   }else c.phase+=1.4;
-  }
- }
-}
-function animate(){
- requestAnimationFrame(animate);
- const dt=Math.min(clock.getDelta(),.04);
- if(playing){
-  movePlayer(dt);
-  updateCats(dt,performance.now()/1000);
-  if(dashTimer>0)dashTimer-=dt;
-  else dashEnergy=Math.min(100,dashEnergy+12*dt);
-  shootCooldown=Math.max(0,shootCooldown-dt);
-  if(fireHeld)shoot();
-  if(messageTimer>0){
-   messageTimer-=dt*1000;
-   if(messageTimer<=0)messageEl.textContent="";
-  }
-  updateHUD();
- }
- renderer.render(scene,camera);
-}
-function startGame(){
- startScreen.style.display="none";
- buildLevel();playing=true;
- sayMessage("LEVEL 1",1200);
-}
-requestAnimationFrame(animate);
-startBtn.addEventListener("click",startGame);
+      <div id="actionButtons">
+        <button id="fire">FIRE</button>
+        <button id="reload">RELOAD</button>
+        <button id="dash">DASH</button>
+      </div>
+    </div>
 
-window.addEventListener("keydown",e=>{
- keys[e.code]=true;
- if(["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.code))e.preventDefault();
- if(e.code==="KeyR")reload();
- if(e.code==="Space")dash();
- if(e.code==="KeyS")shoot();
-});
-window.addEventListener("keyup",e=>keys[e.code]=false);
+    <div id="startScreen" class="overlay">
+      <h1>MAZE OPS</h1>
+      <p>Explore the maze. Collect the key. Find the exit.</p>
+      <p>Use your pulse blaster to deactivate the rogue drones.</p>
+      <button id="startButton">START GAME</button>
+    </div>
 
-function isTouchDevice(){return window.matchMedia("(pointer:coarse)").matches}
-renderer.domElement.addEventListener("click",()=>{
- if(playing&&!isTouchDevice())renderer.domElement.requestPointerLock?.();
-});
-document.addEventListener("pointerlockchange",()=>{
- locked=document.pointerLockElement===renderer.domElement;
-});
-document.addEventListener("mousemove",e=>{
- if(locked&&playing){
-  yaw-=e.movementX*.002;
-  pitch-=e.movementY*.002;
-  pitch=Math.max(-1.45,Math.min(1.45,pitch));
-  camera.rotation.set(pitch,yaw,0);
- }
-});
+    <div id="endScreen" class="overlay hidden">
+      <h1 id="endTitle">LEVEL COMPLETE</h1>
+      <p id="endText">Well done!</p>
+      <button id="nextButton">CONTINUE</button>
+    </div>
 
-const stickArea=document.getElementById("stickArea");
-const stick=document.getElementById("stick");
-stickArea.addEventListener("pointerdown",e=>{
- e.preventDefault();joystickPointer=e.pointerId;
- stickArea.setPointerCapture(e.pointerId);updateStick(e);
-});
-stickArea.addEventListener("pointermove",e=>{
- if(e.pointerId===joystickPointer)updateStick(e);
-});
-function updateStick(e){
- const r=stickArea.getBoundingClientRect();
- const cx=r.left+r.width/2,cy=r.top+r.height/2;
- let dx=e.clientX-cx,dy=e.clientY-cy;
- const max=r.width*.34;
- const d=Math.hypot(dx,dy);
- if(d>max){dx=dx/d*max;dy=dy/d*max}
- moveX=dx/max;moveY=-dy/max;
- stick.style.left=(r.width/2-27+dx)+"px";
- stick.style.top=(r.height/2-27+dy)+"px";
-}
-function resetStick(){
- joystickPointer=null;moveX=0;moveY=0;
- stick.style.left=(stickArea.clientWidth/2-27)+"px";
- stick.style.top=(stickArea.clientHeight/2-27)+"px";
-}
-stickArea.addEventListener("pointerup",resetStick);
-stickArea.addEventListener("pointercancel",resetStick);
+    <div id="gameOver" class="overlay hidden">
+      <h1>GAME OVER</h1>
+      <p>Your mission has ended.</p>
+      <button id="restartButton">TRY AGAIN</button>
+    </div>
 
-const lookArea=document.getElementById("lookArea");
-lookArea.addEventListener("pointerdown",e=>{
- if(e.target.closest("button"))return;
- lookPointer=e.pointerId;lastLookX=e.clientX;lastLookY=e.clientY;
- lookArea.setPointerCapture(e.pointerId);
-});
-lookArea.addEventListener("pointermove",e=>{
- if(e.pointerId!==lookPointer)return;
- const dx=e.clientX-lastLookX,dy=e.clientY-lastLookY;
- lastLookX=e.clientX;lastLookY=e.clientY;
- yaw-=dx*.005;pitch-=dy*.005;
- pitch=Math.max(-1.45,Math.min(1.45,pitch));
- camera.rotation.set(pitch,yaw,0);
-});
-function stopLook(){lookPointer=null}
-lookArea.addEventListener("pointerup",stopLook);
-lookArea.addEventListener("pointercancel",stopLook);
+    <div id="reloadText">RELOADING!</div>
+    <div id="dashText">DASH READY</div>
+  </div>
 
-const fireBtn=document.getElementById("fireBtn");
-fireBtn.addEventListener("pointerdown",e=>{
- e.preventDefault();fireHeld=true;shoot();
-});
-fireBtn.addEventListener("pointerup",()=>fireHeld=false);
-fireBtn.addEventListener("pointercancel",()=>fireHeld=false);
-fireBtn.addEventListener("pointerleave",()=>fireHeld=false);
-document.getElementById("dashBtn").addEventListener("pointerdown",e=>{
- e.preventDefault();dash();
-});
-document.getElementById("reloadBtn").addEventListener("pointerdown",e=>{
- e.preventDefault();reload();
-});
-
-window.addEventListener("blur",()=>{
- keys={};fireHeld=false;resetStick();
-});
-window.addEventListener("resize",()=>{
- camera.aspect=innerWidth/innerHeight;
- camera.updateProjectionMatrix();
- renderer.setSize(innerWidth,innerHeight);
-});
-})();
-</script>
+  <script type="module" src="script.js"></script>
 </body>
 </html>
