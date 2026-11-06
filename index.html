@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,61 +7,55 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <div id="game"></div>
 
-  <div id="game">
-    <div id="hud">
-      <div class="hud-box">
-        <span>HEALTH</span>
-        <strong id="health">100</strong>
-      </div>
-      <div class="hud-box">
-        <span>LEVEL</span>
-        <strong id="level">1 / 5</strong>
-      </div>
-      <div class="hud-box">
-        <span>ENERGY CELLS</span>
-        <strong id="ammo">35 / ∞</strong>
-      </div>
+  <div id="hud">
+    <div class="hud-box">❤️ HEALTH: <span id="health">100</span></div>
+    <div class="hud-box">☠️ LEVEL: <span id="level">1 / 5</span></div>
+    <div class="hud-box">🔫 AMMO: <span id="ammo">35 / 35</span></div>
+  </div>
+
+  <div id="message">DEACTIVATE THE BOTS. FIND THE KEY. ESCAPE.</div>
+  <div id="crosshair">+</div>
+  <div id="hitMarker">✕</div>
+  <div id="reloadText">RELOADING...</div>
+  <div id="dashText">DASH READY</div>
+
+  <div id="controls">
+    <div id="joystick"><div id="stick"></div></div>
+
+    <div id="lookArea"></div>
+
+    <div id="actionButtons">
+      <button id="fire" class="control-button fire-button">FIRE</button>
+      <button id="reload" class="control-button">RELOAD</button>
+      <button id="dash" class="control-button">DASH</button>
     </div>
+  </div>
 
-    <div id="message">FIND THE KEY TO UNLOCK THE EXIT</div>
-    <div id="crosshair">+</div>
-
-    <div id="controls">
-      <div id="joystick">
-        <div id="stick"></div>
-      </div>
-
-      <div id="lookArea"></div>
-
-      <div id="actionButtons">
-        <button id="fire">FIRE</button>
-        <button id="reload">RELOAD</button>
-        <button id="dash">DASH</button>
-      </div>
-    </div>
-
-    <div id="startScreen" class="overlay">
+  <div id="startScreen" class="overlay">
+    <div class="panel">
       <h1>MAZE OPS</h1>
-      <p>Explore the maze. Collect the key. Find the exit.</p>
-      <p>Use your pulse blaster to deactivate the rogue drones.</p>
+      <p>Five dangerous maze levels. Find the key and escape.</p>
+      <p>Destroy every robot before unlocking the exit.</p>
       <button id="startButton">START GAME</button>
     </div>
+  </div>
 
-    <div id="endScreen" class="overlay hidden">
-      <h1 id="endTitle">LEVEL COMPLETE</h1>
-      <p id="endText">Well done!</p>
-      <button id="nextButton">CONTINUE</button>
+  <div id="endScreen" class="overlay hidden">
+    <div class="panel">
+      <h1 id="endTitle">LEVEL COMPLETE!</h1>
+      <p id="endText">You escaped the maze.</p>
+      <button id="nextButton">NEXT LEVEL</button>
     </div>
+  </div>
 
-    <div id="gameOver" class="overlay hidden">
-      <h1>GAME OVER</h1>
-      <p>Your mission has ended.</p>
+  <div id="gameOver" class="overlay hidden">
+    <div class="panel">
+      <h1>MISSION FAILED</h1>
+      <p>Your health reached zero.</p>
       <button id="restartButton">TRY AGAIN</button>
     </div>
-
-    <div id="reloadText">RELOADING!</div>
-    <div id="dashText">DASH READY</div>
   </div>
 
   <script type="module" src="script.js"></script>
