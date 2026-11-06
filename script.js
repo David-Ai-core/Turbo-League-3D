@@ -1,62 +1,65 @@
-
 import * as THREE from
-"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+  "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 
 // =====================================
-// GAME SETTINGS
+// SETUP
 // =====================================
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x111b2a);
-scene.fog = new THREE.Fog(0x111b2a, 5, 23);
+scene.background = new THREE.Color(0x101827);
+scene.fog = new THREE.Fog(0x101827, 5, 28);
 
 const camera = new THREE.PerspectiveCamera(
   75, window.innerWidth / window.innerHeight, 0.1, 100
 );
 
-const renderer = new THREE.WebGLRenderer({
-  antialias: true
-});
-
+const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-document.getElementById("game").prepend(renderer.domElement);
+document.getElementById("game").appendChild(renderer.domElement);
 
 scene.add(new THREE.HemisphereLight(0xbad8ff, 0x293044, 2));
 
-const light = new THREE.DirectionalLight(0xffffff, 1.5);
-light.position.set(5, 10, 5);
-light.castShadow = true;
-scene.add(light);
+const sun = new THREE.DirectionalLight(0xffffff, 1.5);
+sun.position.set(5, 12, 5);
+sun.castShadow = true;
+scene.add(sun);
 
 const clock = new THREE.Clock();
 const raycaster = new THREE.Raycaster();
 
 const TILE = 3;
+const SIZE = 15;
 const WALL_HEIGHT = 3.5;
 const PLAYER_RADIUS = 0.35;
 
 let level = 1;
 let health = 100;
 let ammo = 35;
-let reserve = Infinity;
-let enemies = [];
-let walls = [];
-let decorations = [];
-let keyObject = null;
-let exitObject = null;
-
 let gameStarted = false;
 let gameEnded = false;
 let hasKey = false;
 let reloading = false;
 let dashing = false;
 let dashCooldown = 0;
+let doorOpening = false;
+let doorTimer = 0;
+
+let maze = [];
+let enemies = [];
+let walls = [];
+let decorations = [];
+let effects = [];
+let keyObject = null;
+let exitObject = null;
+let doorMesh = null;
 
 let yaw = 0;
 let pitch = 0;
+let moveX = 0;
+let moveY = 0;
+let joystickActive = false;
 
 const player = {
   x: 0,
@@ -64,72 +67,9 @@ const player = {
   speed: 4.5
 };
 
-camera.position.set(0, 1.65, 0);
-
 // =====================================
-// MAZE GENERATION
+// HELPERS
 // =====================================
-
-const SIZE = 15;
-
-let maze = [];
-
-function createMaze() {
-  maze = Array.from(
-    { length: SIZE },
-    () => Array(SIZE).fill(0)
-  );
-
-  // Outer walls
-  for (let i = 0; i < SIZE; i++) {
-    maze[0][i] = 1;
-    maze[SIZE - 1][i] = 1;
-    maze[i][0] = 1;
-    maze[i][SIZE - 1] = 1;
-  }
-
-  // Maze obstacles
-  const density = 0.13 + level * 0.035;
-
-  for (let z = 2; z < SIZE - 2; z++) {
-    for (let x = 2; x < SIZE - 2; x++) {
-      if (Math.random() < density) {
-        maze[z][x] = 1;
-      }
-    }
-  }
-
-  // Keep a clear route through the centre
-  for (let x = 1; x < SIZE - 1; x++) {
-    maze[1][x] = 0;
-    maze[SIZE - 2][x] = 0;
-  }
-
-  for (let z = 1; z < SIZE - 1; z++) {
-    maze[z][1] = 0;
-    maze[z][SIZE - 2] = 0;
-  }
-
-  // Clear starting and destination areas
-  for (let z = 1; z <= 3; z++) {
-    for (let x = 1; x <= 3; x++) maze[z][x] = 0;
-  }
-
-  for (let z = SIZE - 4; z < SIZE - 1; z++) {
-    for (let x = SIZE - 4; x < SIZE - 1; x++) {
-      maze[z][x] = 0;
-    }
-  }
-
-  // Clear connecting paths
-  for (let x = 1; x < SIZE - 1; x++) {
-    maze[SIZE - 2][x] = 0;
-  }
-
-  for (let z = 1; z < SIZE - 1; z++) {
-    maze[z][SIZE - 2] = 0;
-  }
-}
 
 function worldX(x) {
   return (x - (SIZE - 1) / 2) * TILE;
@@ -143,21 +83,78 @@ function gridAt(x, z) {
   const gx = Math.round(x / TILE + (SIZE - 1) / 2);
   const gz = Math.round(z / TILE + (SIZE - 1) / 2);
 
-  if (gx < 0 || gz < 0 || gx >= SIZE || gz >= SIZE) {
-    return 1;
-  }
-
+  if (gx < 0 || gz < 0 || gx >= SIZE || gz >= SIZE) return 1;
   return maze[gz][gx];
 }
 
+function showMessage(message) {
+  document.getElementById("message").textContent = message;
+}
+
+function updateHUD() {
+  document.getElementById("health").textContent = health;
+  document.getElementById("level").textContent = level + " / 5";
+  document.getElementById("ammo").textContent = ammo + " / 35";
+}
+
 // =====================================
-// WORLD BUILDING
+// MAZE
+// =====================================
+
+function createMaze() {
+  maze = Array.from(
+    { length: SIZE },
+    () => Array(SIZE).fill(0)
+  );
+
+  for (let i = 0; i < SIZE; i++) {
+    maze[0][i] = 1;
+    maze[SIZE - 1][i] = 1;
+    maze[i][0] = 1;
+    maze[i][SIZE - 1] = 1;
+  }
+
+  const density = 0.12 + level * 0.025;
+
+  for (let z = 2; z < SIZE - 2; z++) {
+    for (let x = 2; x < SIZE - 2; x++) {
+      if (Math.random() < density) maze[z][x] = 1;
+    }
+  }
+
+  // Keep the outer route clear.
+  for (let i = 1; i < SIZE - 1; i++) {
+    maze[1][i] = 0;
+    maze[SIZE - 2][i] = 0;
+    maze[i][1] = 0;
+    maze[i][SIZE - 2] = 0;
+  }
+
+  // Starting area.
+  for (let z = 1; z <= 3; z++) {
+    for (let x = 1; x <= 3; x++) maze[z][x] = 0;
+  }
+
+  // Key and exit areas.
+  for (let z = SIZE - 4; z < SIZE - 1; z++) {
+    for (let x = SIZE - 4; x < SIZE - 1; x++) maze[z][x] = 0;
+  }
+
+  // Connecting route.
+  for (let i = 1; i < SIZE - 1; i++) {
+    maze[SIZE - 2][i] = 0;
+    maze[i][SIZE - 2] = 0;
+  }
+}
+
+// =====================================
+// WORLD
 // =====================================
 
 function clearWorld() {
-  for (const object of walls) scene.remove(object);
-  for (const object of decorations) scene.remove(object);
-  for (const enemy of enemies) scene.remove(enemy.group);
+  [...walls, ...decorations].forEach(o => scene.remove(o));
+  enemies.forEach(e => scene.remove(e.group));
+  effects.forEach(e => scene.remove(e.object));
 
   if (keyObject) scene.remove(keyObject);
   if (exitObject) scene.remove(exitObject);
@@ -165,26 +162,26 @@ function clearWorld() {
   walls = [];
   decorations = [];
   enemies = [];
+  effects = [];
   keyObject = null;
   exitObject = null;
+  doorMesh = null;
+  doorOpening = false;
+  doorTimer = 0;
 }
 
 function addWall(x, z) {
-  const geometry = new THREE.BoxGeometry(
-    TILE, WALL_HEIGHT, TILE
+  const wall = new THREE.Mesh(
+    new THREE.BoxGeometry(TILE, WALL_HEIGHT, TILE),
+    new THREE.MeshStandardMaterial({
+      color: level % 2 ? 0x344b65 : 0x45404e,
+      roughness: 0.8
+    })
   );
-
-  const material = new THREE.MeshStandardMaterial({
-    color: level % 2 ? 0x34445b : 0x45404e,
-    roughness: 0.8
-  });
-
-  const wall = new THREE.Mesh(geometry, material);
 
   wall.position.set(x, WALL_HEIGHT / 2, z);
   wall.castShadow = true;
   wall.receiveShadow = true;
-
   scene.add(wall);
   walls.push(wall);
 }
@@ -196,30 +193,27 @@ function buildWorld() {
   const floor = new THREE.Mesh(
     new THREE.PlaneGeometry(SIZE * TILE, SIZE * TILE),
     new THREE.MeshStandardMaterial({
-      color: 0x252d3b,
+      color: 0x252f40,
       roughness: 0.95
     })
   );
 
   floor.rotation.x = -Math.PI / 2;
-  floor.position.y = 0;
   floor.receiveShadow = true;
   scene.add(floor);
   decorations.push(floor);
 
   for (let z = 0; z < SIZE; z++) {
     for (let x = 0; x < SIZE; x++) {
-      if (maze[z][x] === 1) {
-        addWall(worldX(x), worldZ(z));
-      }
+      if (maze[z][x] === 1) addWall(worldX(x), worldZ(z));
     }
   }
 
-  // Decorative ceiling lights
+  // Blue ceiling lights.
   for (let z = 2; z < SIZE - 2; z += 4) {
     for (let x = 2; x < SIZE - 2; x += 4) {
-      if (!maze[z][x]) {
-        const lamp = new THREE.PointLight(0x64aaff, 1.2, 8);
+      if (maze[z][x] === 0) {
+        const lamp = new THREE.PointLight(0x4c9dff, 1.4, 9);
         lamp.position.set(worldX(x), 2.8, worldZ(z));
         scene.add(lamp);
         decorations.push(lamp);
@@ -229,10 +223,8 @@ function buildWorld() {
 
   player.x = worldX(1);
   player.z = worldZ(1);
-
   yaw = 0;
   pitch = 0;
-
   camera.position.set(player.x, 1.65, player.z);
 
   createKey();
@@ -241,125 +233,206 @@ function buildWorld() {
 }
 
 // =====================================
-// KEY AND EXIT
+// KEY
 // =====================================
 
 function createKey() {
-  const geometry = new THREE.TorusGeometry(0.35, 0.09, 10, 24);
+  keyObject = new THREE.Group();
 
-  keyObject = new THREE.Mesh(
-    geometry,
-    new THREE.MeshStandardMaterial({
-      color: 0xffd700,
-      emissive: 0x997000,
-      emissiveIntensity: 1
-    })
+  const gold = new THREE.MeshStandardMaterial({
+    color: 0xffd22e,
+    metalness: 0.8,
+    roughness: 0.25,
+    emissive: 0x805000
+  });
+
+  const ring = new THREE.Mesh(
+    new THREE.TorusGeometry(0.22, 0.065, 10, 24),
+    gold
   );
+  ring.position.x = -0.2;
+  keyObject.add(ring);
 
-  keyObject.position.set(
-    worldX(SIZE - 2), 1.2, worldZ(1)
+  const shaft = new THREE.Mesh(
+    new THREE.BoxGeometry(0.55, 0.09, 0.09),
+    gold
   );
+  shaft.position.x = 0.2;
+  keyObject.add(shaft);
 
+  const tooth1 = new THREE.Mesh(
+    new THREE.BoxGeometry(0.1, 0.2, 0.09),
+    gold
+  );
+  tooth1.position.set(0.35, -0.08, 0);
+  keyObject.add(tooth1);
+
+  const tooth2 = tooth1.clone();
+  tooth2.position.x = 0.52;
+  keyObject.add(tooth2);
+
+  keyObject.position.set(worldX(SIZE - 2), 1.2, worldZ(1));
   scene.add(keyObject);
 }
 
+// =====================================
+// EXIT DOOR
+// =====================================
+
 function createExit() {
-  const group = new THREE.Group();
+  exitObject = new THREE.Group();
 
-  const frame = new THREE.Mesh(
-    new THREE.BoxGeometry(1.5, 2.7, 0.3),
+  const frameMaterial = new THREE.MeshStandardMaterial({
+    color: 0x1765aa,
+    metalness: 0.5,
+    emissive: 0x063b75
+  });
+
+  const left = new THREE.Mesh(
+    new THREE.BoxGeometry(0.18, 2.8, 0.3),
+    frameMaterial
+  );
+  left.position.x = -0.8;
+
+  const right = left.clone();
+  right.position.x = 0.8;
+
+  const top = new THREE.Mesh(
+    new THREE.BoxGeometry(1.7, 0.18, 0.3),
+    frameMaterial
+  );
+  top.position.y = 1.4;
+
+  doorMesh = new THREE.Mesh(
+    new THREE.BoxGeometry(1.35, 2.55, 0.18),
     new THREE.MeshStandardMaterial({
-      color: 0x1677db,
-      emissive: 0x064a9e
+      color: 0x16a5e8,
+      emissive: 0x07558c,
+      metalness: 0.5
     })
   );
+  doorMesh.position.y = 1.25;
 
-  group.add(frame);
+  exitObject.add(left, right, top, doorMesh);
+  exitObject.position.set(worldX(SIZE - 2), 0, worldZ(SIZE - 2));
+  scene.add(exitObject);
+}
 
-  const glow = new THREE.Mesh(
-    new THREE.BoxGeometry(1.1, 2.3, 0.35),
-    new THREE.MeshBasicMaterial({
-      color: 0x27c9ff,
-      transparent: true,
-      opacity: 0.55
-    })
-  );
+function openDoor() {
+  if (doorOpening) return;
 
-  group.add(glow);
-  group.position.set(worldX(SIZE - 2), 1.35, worldZ(SIZE - 2));
-
-  scene.add(group);
-  exitObject = group;
+  doorOpening = true;
+  doorTimer = 0;
+  showMessage("KEY ACCEPTED! EXIT UNLOCKED!");
 }
 
 // =====================================
-// ENEMIES
+// ROBOT BOTS
 // =====================================
+
+function createRobot(x, z) {
+  const group = new THREE.Group();
+
+  const metal = new THREE.MeshStandardMaterial({
+    color: 0x657d98,
+    metalness: 0.75,
+    roughness: 0.3
+  });
+
+  const dark = new THREE.MeshStandardMaterial({
+    color: 0x182536,
+    metalness: 0.6
+  });
+
+  const red = new THREE.MeshStandardMaterial({
+    color: 0xff3030,
+    emissive: 0x8a0000
+  });
+
+  const body = new THREE.Mesh(
+    new THREE.BoxGeometry(0.85, 0.9, 0.55),
+    metal
+  );
+  body.position.y = 1.05;
+  body.castShadow = true;
+  group.add(body);
+
+  const head = new THREE.Mesh(
+    new THREE.BoxGeometry(0.65, 0.5, 0.55),
+    dark
+  );
+  head.position.y = 1.78;
+  group.add(head);
+
+  const eye = new THREE.Mesh(
+    new THREE.BoxGeometry(0.42, 0.12, 0.08),
+    red
+  );
+  eye.position.set(0, 1.8, -0.3);
+  group.add(eye);
+
+  const armGeometry = new THREE.BoxGeometry(0.2, 0.75, 0.22);
+
+  const arm1 = new THREE.Mesh(armGeometry, metal);
+  arm1.position.set(-0.55, 1.05, 0);
+  group.add(arm1);
+
+  const arm2 = arm1.clone();
+  arm2.position.x = 0.55;
+  group.add(arm2);
+
+  const legGeometry = new THREE.BoxGeometry(0.25, 0.65, 0.28);
+
+  const leg1 = new THREE.Mesh(legGeometry, dark);
+  leg1.position.set(-0.22, 0.33, 0);
+  group.add(leg1);
+
+  const leg2 = leg1.clone();
+  leg2.position.x = 0.22;
+  group.add(leg2);
+
+  group.position.set(x, 0, z);
+  scene.add(group);
+
+  return {
+    group,
+    hp: 3 + level,
+    speed: 0.65 + level * 0.12,
+    attackTimer: 0,
+    active: true,
+    walkTime: Math.random() * 5,
+    legs: [leg1, leg2],
+    arms: [arm1, arm2]
+  };
+}
 
 function createEnemies() {
   const count = level + 1;
 
   for (let i = 0; i < count; i++) {
-    let x, z;
+    let x = 0;
+    let z = 0;
     let attempts = 0;
 
     do {
       const gx = 3 + Math.floor(Math.random() * 9);
       const gz = 3 + Math.floor(Math.random() * 9);
-
       x = worldX(gx);
       z = worldZ(gz);
       attempts++;
     } while (
       (gridAt(x, z) === 1 ||
        Math.hypot(x - player.x, z - player.z) < 5) &&
-      attempts < 100
+      attempts < 150
     );
 
-    if (attempts >= 100) continue;
-
-    const group = new THREE.Group();
-
-    const body = new THREE.Mesh(
-      new THREE.BoxGeometry(0.9, 1.1, 0.9),
-      new THREE.MeshStandardMaterial({
-        color: 0x9a3de0,
-        emissive: 0x431080
-      })
-    );
-
-    body.position.y = 0.65;
-    body.castShadow = true;
-    group.add(body);
-
-    const eye = new THREE.Mesh(
-      new THREE.SphereGeometry(0.15, 12, 12),
-      new THREE.MeshBasicMaterial({ color: 0xff5050 })
-    );
-
-    eye.position.set(0, 0.85, -0.47);
-    group.add(eye);
-
-    group.position.set(x, 0, z);
-    scene.add(group);
-
-    enemies.push({
-      group,
-      hp: 2 + level,
-      speed: 0.7 + level * 0.13,
-      active: true,
-      attackTimer: 0
-    });
+    if (attempts < 150) enemies.push(createRobot(x, z));
   }
 }
 
 // =====================================
-// PLAYER MOVEMENT
+// MOVEMENT
 // =====================================
-
-let moveX = 0;
-let moveY = 0;
-let joystickActive = false;
 
 function canMove(x, z) {
   const r = PLAYER_RADIUS;
@@ -384,44 +457,36 @@ function movePlayer(delta) {
   );
 
   const direction = new THREE.Vector3();
-
   direction.addScaledVector(forward, -moveY);
   direction.addScaledVector(right, moveX);
 
   if (direction.length() > 1) direction.normalize();
 
   const speed = dashing ? 11 : player.speed;
-
   const dx = direction.x * speed * delta;
   const dz = direction.z * speed * delta;
 
-  if (canMove(player.x + dx, player.z)) {
-    player.x += dx;
-  }
-
-  if (canMove(player.x, player.z + dz)) {
-    player.z += dz;
-  }
+  if (canMove(player.x + dx, player.z)) player.x += dx;
+  if (canMove(player.x, player.z + dz)) player.z += dz;
 
   camera.position.set(player.x, 1.65, player.z);
-
   camera.rotation.order = "YXZ";
   camera.rotation.y = yaw;
   camera.rotation.x = pitch;
 }
 
 // =====================================
-// TOUCH JOYSTICK
+// JOYSTICK
 // =====================================
 
 const joystick = document.getElementById("joystick");
 const stick = document.getElementById("stick");
-
 let joyTouch = null;
 
 joystick.addEventListener("pointerdown", e => {
   joyTouch = e.pointerId;
   joystick.setPointerCapture(e.pointerId);
+  joystickActive = true;
   updateJoystick(e);
 });
 
@@ -431,12 +496,8 @@ joystick.addEventListener("pointermove", e => {
 
 function updateJoystick(e) {
   const rect = joystick.getBoundingClientRect();
-
-  const cx = rect.left + rect.width / 2;
-  const cy = rect.top + rect.height / 2;
-
-  let dx = e.clientX - cx;
-  let dy = e.clientY - cy;
+  let dx = e.clientX - (rect.left + rect.width / 2);
+  let dy = e.clientY - (rect.top + rect.height / 2);
 
   const max = 42;
   const distance = Math.hypot(dx, dy);
@@ -446,9 +507,7 @@ function updateJoystick(e) {
     dy = dy / distance * max;
   }
 
-  stick.style.transform =
-    `translate(${dx}px, ${dy}px)`;
-
+  stick.style.transform = `translate(${dx}px, ${dy}px)`;
   moveX = dx / max;
   moveY = dy / max;
 }
@@ -465,11 +524,10 @@ joystick.addEventListener("pointerup", releaseJoystick);
 joystick.addEventListener("pointercancel", releaseJoystick);
 
 // =====================================
-// TOUCH CAMERA
+// LOOK AROUND
 // =====================================
 
 const lookArea = document.getElementById("lookArea");
-
 let lookTouch = null;
 let lastLookX = 0;
 let lastLookY = 0;
@@ -489,10 +547,7 @@ lookArea.addEventListener("pointermove", e => {
 
   yaw -= dx * 0.006;
   pitch -= dy * 0.004;
-
-  pitch = THREE.MathUtils.clamp(
-    pitch, -1.25, 1.25
-  );
+  pitch = THREE.MathUtils.clamp(pitch, -1.25, 1.25);
 
   lastLookX = e.clientX;
   lastLookY = e.clientY;
@@ -504,6 +559,35 @@ function releaseLook() {
 
 lookArea.addEventListener("pointerup", releaseLook);
 lookArea.addEventListener("pointercancel", releaseLook);
+
+// =====================================
+// BULLET EFFECTS
+// =====================================
+
+function createTracer(start, end, hit) {
+  const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
+
+  const line = new THREE.Line(
+    geometry,
+    new THREE.LineBasicMaterial({
+      color: hit ? 0xffe28a : 0x7bdcff,
+      transparent: true,
+      opacity: 1
+    })
+  );
+
+  scene.add(line);
+  effects.push({ object: line, life: 0.12 });
+}
+
+function showHitMarker() {
+  const marker = document.getElementById("hitMarker");
+  marker.style.opacity = "1";
+
+  setTimeout(() => {
+    marker.style.opacity = "0";
+  }, 180);
+}
 
 // =====================================
 // SHOOTING
@@ -522,10 +606,10 @@ function shoot() {
 
   const origin = camera.position.clone();
   const direction = new THREE.Vector3();
-
   camera.getWorldDirection(direction);
+
   raycaster.set(origin, direction);
-  raycaster.far = 22;
+  raycaster.far = 25;
 
   const targets = [];
 
@@ -538,23 +622,25 @@ function shoot() {
   });
 
   const hits = raycaster.intersectObjects(targets, false);
+  let end = origin.clone().add(direction.clone().multiplyScalar(20));
 
   if (hits.length > 0) {
-    const hit = hits[0].object;
+    end = hits[0].point.clone();
 
+    const hitObject = hits[0].object;
     const enemy = enemies.find(e => {
       let found = false;
-      e.group.traverse(object => {
-        if (object === hit) found = true;
+      e.group.traverse(o => {
+        if (o === hitObject) found = true;
       });
       return found;
     });
 
     if (enemy) {
       enemy.hp--;
+      showHitMarker();
 
-      enemy.group.scale.setScalar(0.9);
-
+      enemy.group.scale.setScalar(0.88);
       setTimeout(() => {
         if (enemy.active) enemy.group.scale.setScalar(1);
       }, 100);
@@ -565,37 +651,35 @@ function shoot() {
         enemies = enemies.filter(e => e !== enemy);
 
         if (enemies.length === 0) {
-          document.getElementById("message").textContent =
-            "ALL DRONES DEACTIVATED! FIND THE KEY!";
+          showMessage("ALL BOTS DEACTIVATED! FIND THE KEY!");
         }
       }
     }
   }
 
-  // Small visual flash
-  document.getElementById("crosshair").style.color = "#ffdf70";
+  createTracer(origin.clone(), end, hits.length > 0);
 
-  setTimeout(() => {
-    document.getElementById("crosshair").style.color = "white";
-  }, 100);
+  const crosshair = document.getElementById("crosshair");
+  crosshair.style.color = "#ffdf70";
+  setTimeout(() => crosshair.style.color = "white", 100);
 }
 
 // =====================================
-// RELOADING
+// RELOAD
 // =====================================
 
 function reload() {
-  if (reloading || ammo === 35 || !gameStarted) return;
+  if (reloading || ammo === 35 || !gameStarted || gameEnded) return;
 
   reloading = true;
-
-  const text = document.getElementById("reloadText");
-  text.style.display = "block";
+  document.getElementById("reloadText").style.display = "block";
 
   setTimeout(() => {
+    if (gameEnded) return;
+
     ammo = 35;
     reloading = false;
-    text.style.display = "none";
+    document.getElementById("reloadText").style.display = "none";
     updateHUD();
   }, 1300);
 }
@@ -609,22 +693,19 @@ function dash() {
 
   dashing = true;
   dashCooldown = 5;
-
-  document.getElementById("dashText").textContent =
-    "DASH RECHARGING...";
+  document.getElementById("dashText").textContent = "DASH RECHARGING...";
 
   setTimeout(() => {
     dashing = false;
   }, 280);
 
   setTimeout(() => {
-    document.getElementById("dashText").textContent =
-      "DASH READY";
+    document.getElementById("dashText").textContent = "DASH READY";
   }, 5000);
 }
 
 // =====================================
-// BUTTONS
+// BUTTONS AND KEYBOARD
 // =====================================
 
 document.getElementById("fire").addEventListener("pointerdown", e => {
@@ -642,41 +723,29 @@ document.getElementById("dash").addEventListener("pointerdown", e => {
   dash();
 });
 
-// Desktop keyboard controls
-const keys = {};
-
+// Only S, R and D are used on the keyboard.
+// WASD movement is deliberately disabled.
 window.addEventListener("keydown", e => {
-  keys[e.key.toLowerCase()] = true;
+  const key = e.key.toLowerCase();
 
-  if (e.key === " ") shoot();
-  if (e.key.toLowerCase() === "r") reload();
-  if (e.key.toLowerCase() === "shift") dash();
-});
-
-window.addEventListener("keyup", e => {
-  keys[e.key.toLowerCase()] = false;
-});
-
-function keyboardMovement() {
-  const x =
-    (keys["d"] || keys["arrowright"] ? 1 : 0) -
-    (keys["a"] || keys["arrowleft"] ? 1 : 0);
-
-  const y =
-    (keys["s"] || keys["arrowdown"] ? 1 : 0) -
-    (keys["w"] || keys["arrowup"] ? 1 : 0);
-
-  if (x !== 0 || y !== 0) {
-    moveX = x;
-    moveY = y;
-  } else if (!joystickActive) {
-    moveX = 0;
-    moveY = 0;
+  if (key === "s") {
+    e.preventDefault();
+    shoot();
   }
-}
+
+  if (key === "r") {
+    e.preventDefault();
+    reload();
+  }
+
+  if (key === "d") {
+    e.preventDefault();
+    dash();
+  }
+});
 
 // =====================================
-// ENEMY AI
+// ROBOT AI
 // =====================================
 
 function updateEnemies(delta) {
@@ -685,12 +754,17 @@ function updateEnemies(delta) {
 
     const dx = player.x - enemy.group.position.x;
     const dz = player.z - enemy.group.position.z;
-
     const distance = Math.hypot(dx, dz);
 
-    if (distance < 10 && distance > 1.2) {
-      const speed = enemy.speed * delta;
+    enemy.walkTime += delta * 7;
 
+    enemy.legs[0].rotation.x = Math.sin(enemy.walkTime) * 0.45;
+    enemy.legs[1].rotation.x = -Math.sin(enemy.walkTime) * 0.45;
+    enemy.arms[0].rotation.x = -Math.sin(enemy.walkTime) * 0.25;
+    enemy.arms[1].rotation.x = Math.sin(enemy.walkTime) * 0.25;
+
+    if (distance < 12 && distance > 1.25) {
+      const speed = enemy.speed * delta;
       const nx = dx / distance;
       const nz = dz / distance;
 
@@ -706,21 +780,17 @@ function updateEnemies(delta) {
       }
 
       enemy.group.rotation.y = Math.atan2(dx, dz);
+      enemy.group.position.y = Math.abs(Math.sin(enemy.walkTime)) * 0.06;
     }
-
-    enemy.group.position.y =
-      Math.sin(performance.now() * 0.003 + distance) * 0.12;
 
     enemy.attackTimer -= delta;
 
     if (distance < 1.5 && enemy.attackTimer <= 0) {
-      health -= 10;
-      enemy.attackTimer = 1.3;
+      health = Math.max(0, health - 5);
+      enemy.attackTimer = 1;
       updateHUD();
 
       if (health <= 0) {
-        health = 0;
-        updateHUD();
         showGameOver();
       }
     }
@@ -728,24 +798,24 @@ function updateEnemies(delta) {
 }
 
 // =====================================
-// COLLECT KEY AND EXIT
+// KEY AND EXIT OBJECTIVES
 // =====================================
 
 function checkObjectives() {
-  if (!keyObject || gameEnded) return;
+  if (gameEnded || doorOpening) return;
 
-  const keyDistance = Math.hypot(
-    player.x - keyObject.position.x,
-    player.z - keyObject.position.z
-  );
+  if (keyObject && !hasKey) {
+    const distance = Math.hypot(
+      player.x - keyObject.position.x,
+      player.z - keyObject.position.z
+    );
 
-  if (!hasKey && keyDistance < 1.3) {
-    hasKey = true;
-    scene.remove(keyObject);
-    keyObject = null;
-
-    document.getElementById("message").textContent =
-      "KEY COLLECTED! FIND THE BLUE EXIT!";
+    if (distance < 1.3) {
+      hasKey = true;
+      scene.remove(keyObject);
+      keyObject = null;
+      showMessage("KEY COLLECTED! NOW FIND THE EXIT!");
+    }
   }
 
   if (!exitObject) return;
@@ -755,21 +825,39 @@ function checkObjectives() {
     player.z - exitObject.position.z
   );
 
-  if (exitDistance < 1.5) {
-    if (hasKey && enemies.length === 0) {
-      completeLevel();
-    } else if (!hasKey) {
-      document.getElementById("message").textContent =
-        "YOU NEED THE KEY!";
+  if (exitDistance < 1.7) {
+    if (!hasKey) {
+      showMessage("THE DOOR IS LOCKED! FIND THE KEY!");
+    } else if (enemies.length > 0) {
+      showMessage("DEACTIVATE ALL THE BOTS FIRST!");
     } else {
-      document.getElementById("message").textContent =
-        "DEACTIVATE ALL DRONES FIRST!";
+      openDoor();
     }
   }
 }
 
 // =====================================
-// LEVEL PROGRESSION
+// DOOR ANIMATION
+// =====================================
+
+function updateDoor(delta) {
+  if (!doorOpening || !doorMesh) return;
+
+  doorTimer += delta;
+
+  // Door slides sideways into its frame.
+  doorMesh.position.x = Math.min(1.5, doorTimer * 2.2);
+  doorMesh.material.emissiveIntensity =
+    Math.max(0, 1 - doorTimer);
+
+  // A short pause, then move to the next level.
+  if (doorTimer > 1.3) {
+    completeLevel();
+  }
+}
+
+// =====================================
+// LEVELS
 // =====================================
 
 function completeLevel() {
@@ -786,11 +874,11 @@ function completeLevel() {
 
   if (level >= 5) {
     title.textContent = "MISSION COMPLETE!";
-    text.textContent = "You conquered all five mazes!";
+    text.textContent = "You escaped all five maze levels!";
     button.textContent = "PLAY AGAIN";
   } else {
     title.textContent = "LEVEL COMPLETE!";
-    text.textContent = "Get ready for the next maze.";
+    text.textContent = "The door has opened. Prepare for the next maze.";
     button.textContent = "NEXT LEVEL";
   }
 }
@@ -809,12 +897,12 @@ function nextLevel() {
   ammo = 35;
   hasKey = false;
   gameEnded = false;
+  reloading = false;
 
+  document.getElementById("reloadText").style.display = "none";
   buildWorld();
   updateHUD();
-
-  document.getElementById("message").textContent =
-    "FIND THE KEY TO UNLOCK THE EXIT";
+  showMessage("DEACTIVATE THE BOTS. FIND THE KEY. ESCAPE.");
 }
 
 function showGameOver() {
@@ -828,45 +916,37 @@ function restartGame() {
   ammo = 35;
   hasKey = false;
   gameEnded = false;
+  reloading = false;
+  dashing = false;
 
   document.getElementById("gameOver").classList.add("hidden");
+  document.getElementById("reloadText").style.display = "none";
 
   buildWorld();
   updateHUD();
+  showMessage("DEACTIVATE THE BOTS. FIND THE KEY. ESCAPE.");
 }
 
 // =====================================
-// HUD
+// START BUTTON
 // =====================================
 
-function updateHUD() {
-  document.getElementById("health").textContent = health;
-  document.getElementById("level").textContent = level + " / 5";
-  document.getElementById("ammo").textContent = ammo + " / ∞";
-}
+document.getElementById("startButton").addEventListener("pointerup", e => {
+  e.preventDefault();
 
-// START BUTTONS
-
-function startGame() {
   document.getElementById("startScreen").classList.add("hidden");
-
   gameStarted = true;
   gameEnded = false;
 
   buildWorld();
   updateHUD();
-}
-
-document.getElementById("startButton").addEventListener("pointerup", e => {
-  e.preventDefault();
-  startGame();
 });
 
 document.getElementById("nextButton").addEventListener("click", nextLevel);
-
 document.getElementById("restartButton").addEventListener("click", restartGame);
+
 // =====================================
-// MAIN GAME LOOP
+// MAIN LOOP
 // =====================================
 
 function animate() {
@@ -875,8 +955,6 @@ function animate() {
   const delta = Math.min(clock.getDelta(), 0.05);
 
   if (gameStarted && !gameEnded) {
-    keyboardMovement();
-
     if (dashCooldown > 0) {
       dashCooldown = Math.max(0, dashCooldown - delta);
     }
@@ -884,26 +962,46 @@ function animate() {
     movePlayer(delta);
     updateEnemies(delta);
     checkObjectives();
+    updateDoor(delta);
 
     if (keyObject) {
       keyObject.rotation.y += delta * 2;
+      keyObject.position.y = 1.2 + Math.sin(performance.now() * 0.003) * 0.12;
     }
 
-    if (exitObject) {
-      exitObject.rotation.y = Math.sin(performance.now() * 0.001) * 0.08;
+    if (exitObject && !doorOpening) {
+      exitObject.rotation.y =
+        Math.sin(performance.now() * 0.001) * 0.04;
+    }
+  }
+
+  // Remove old bullet tracers.
+  for (let i = effects.length - 1; i >= 0; i--) {
+    effects[i].life -= delta;
+
+    if (effects[i].life <= 0) {
+      scene.remove(effects[i].object);
+      effects.splice(i, 1);
     }
   }
 
   renderer.render(scene, camera);
 }
 
+// =====================================
+// RESIZE
+// =====================================
+
 window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
-
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
+// =====================================
+// START
+// =====================================
+
 buildWorld();
-animate();
 updateHUD();
+animate();
