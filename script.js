@@ -845,11 +845,9 @@ function updateHUD() {
   document.getElementById("ammo").textContent = ammo + " / ∞";
 }
 
-// =====================================
 // START BUTTONS
-// =====================================
 
-document.getElementById("startButton").addEventListener("click", () => {
+function startGame() {
   document.getElementById("startScreen").classList.add("hidden");
 
   gameStarted = true;
@@ -857,12 +855,16 @@ document.getElementById("startButton").addEventListener("click", () => {
 
   buildWorld();
   updateHUD();
+}
+
+document.getElementById("startButton").addEventListener("pointerup", e => {
+  e.preventDefault();
+  startGame();
 });
 
 document.getElementById("nextButton").addEventListener("click", nextLevel);
 
 document.getElementById("restartButton").addEventListener("click", restartGame);
-
 // =====================================
 // MAIN GAME LOOP
 // =====================================
