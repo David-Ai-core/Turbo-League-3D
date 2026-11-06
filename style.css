@@ -1,132 +1,158 @@
-
 * {
   box-sizing: border-box;
-  margin: 0;
-  padding: 0;
   -webkit-tap-highlight-color: transparent;
 }
 
 html, body {
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  background: #080b12;
-  font-family: Arial, sans-serif;
-  color: white;
-  touch-action: none;
-}
-
-#game {
-  position: relative;
+  margin: 0;
+  padding: 0;
   width: 100%;
   height: 100%;
   overflow: hidden;
   background: #101827;
+  color: white;
+  font-family: Arial, sans-serif;
+  touch-action: none;
+  user-select: none;
 }
 
-canvas {
-  position: absolute;
+#game {
+  position: fixed;
   inset: 0;
+  z-index: 1;
+}
+
+#game canvas {
+  display: block;
   width: 100%;
   height: 100%;
-  display: block;
 }
 
 #hud {
-  position: absolute;
-  z-index: 5;
+  position: fixed;
   top: 12px;
   left: 12px;
   right: 12px;
+  z-index: 5;
   display: flex;
   justify-content: space-between;
+  gap: 8px;
   pointer-events: none;
 }
 
 .hud-box {
-  background: rgba(0,0,0,.75);
-  border: 1px solid #52677e;
-  border-radius: 8px;
-  padding: 9px 13px;
-  min-width: 85px;
-}
-
-.hud-box span {
-  display: block;
-  color: #9db6ca;
-  font-size: 10px;
-  margin-bottom: 4px;
-}
-
-.hud-box strong {
-  font-size: 19px;
+  background: rgba(0, 0, 0, 0.72);
+  border: 1px solid #52647d;
+  border-radius: 9px;
+  padding: 10px;
+  font-size: 13px;
+  font-weight: bold;
 }
 
 #message {
-  position: absolute;
-  z-index: 5;
-  top: 83px;
+  position: fixed;
+  top: 65px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(0,0,0,.65);
-  padding: 9px 15px;
-  border-radius: 6px;
+  z-index: 5;
+  background: rgba(0, 0, 0, 0.65);
+  padding: 9px 14px;
+  border-radius: 8px;
   font-size: 12px;
   text-align: center;
   width: max-content;
   max-width: 90%;
-}
-
-#crosshair {
-  position: absolute;
-  z-index: 4;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%,-50%);
-  color: white;
-  font-size: 30px;
-  text-shadow: 0 0 5px black;
   pointer-events: none;
 }
 
-#controls {
-  position: absolute;
+#crosshair {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 4;
+  font-size: 30px;
+  font-weight: bold;
+  pointer-events: none;
+}
+
+#hitMarker {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   z-index: 6;
+  color: #ff4545;
+  font-size: 36px;
+  font-weight: bold;
+  opacity: 0;
+  pointer-events: none;
+}
+
+#reloadText, #dashText {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  background: rgba(0, 0, 0, 0.75);
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 13px;
+  pointer-events: none;
+}
+
+#reloadText {
+  top: 55%;
+  display: none;
+  color: #ffdf70;
+}
+
+#dashText {
+  bottom: 12px;
+  color: #75d7ff;
+}
+
+#controls {
+  position: fixed;
   inset: 0;
+  z-index: 7;
   pointer-events: none;
 }
 
 #joystick {
   position: absolute;
-  left: 25px;
-  bottom: 35px;
+  left: 22px;
+  bottom: 125px;
   width: 125px;
   height: 125px;
   border-radius: 50%;
-  background: rgba(160,190,220,.17);
-  border: 2px solid rgba(220,235,255,.55);
+  background: rgba(100, 130, 170, 0.25);
+  border: 3px solid rgba(190, 215, 255, 0.6);
   pointer-events: auto;
   touch-action: none;
 }
 
 #stick {
   position: absolute;
-  width: 52px;
-  height: 52px;
-  left: 34px;
-  top: 34px;
+  left: 50%;
+  top: 50%;
+  width: 48px;
+  height: 48px;
+  margin-left: -24px;
+  margin-top: -24px;
   border-radius: 50%;
-  background: rgba(220,235,255,.65);
+  background: rgba(220, 235, 255, 0.85);
   border: 2px solid white;
-  box-shadow: 0 0 12px #8abaff;
+  pointer-events: none;
 }
 
 #lookArea {
   position: absolute;
+  left: 35%;
+  top: 100px;
   right: 0;
-  top: 20%;
-  width: 58%;
-  height: 55%;
+  bottom: 115px;
   pointer-events: auto;
   touch-action: none;
 }
@@ -134,116 +160,99 @@ canvas {
 #actionButtons {
   position: absolute;
   right: 18px;
-  bottom: 25px;
+  bottom: 125px;
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
   gap: 12px;
+  align-items: center;
   pointer-events: auto;
 }
 
-#actionButtons button {
+.control-button {
   width: 82px;
-  height: 55px;
+  height: 52px;
+  border: 2px solid rgba(255,255,255,0.8);
   border-radius: 13px;
+  background: rgba(30, 55, 85, 0.88);
   color: white;
   font-weight: bold;
-  font-size: 13px;
-  border: 2px solid rgba(255,255,255,.8);
-  background: rgba(25,40,60,.85);
+  font-size: 12px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.4);
   touch-action: none;
 }
 
-#actionButtons button:active {
-  background: #427fc4;
-  transform: scale(.94);
+.control-button:active {
+  transform: scale(0.93);
+  background: #527ba9;
 }
 
-#fire {
-  width: 105px !important;
-  height: 72px !important;
-  background: rgba(170,45,35,.9) !important;
-  font-size: 18px !important;
-}
-
-#dash {
-  background: rgba(35,105,180,.9) !important;
+.fire-button {
+  width: 92px;
+  height: 62px;
+  background: rgba(170, 40, 40, 0.92);
+  font-size: 15px;
 }
 
 .overlay {
-  position: absolute;
-  z-index: 20;
+  position: fixed;
   inset: 0;
-  background: rgba(3,7,15,.94);
+  z-index: 20;
   display: flex;
-  flex-direction: column;
   justify-content: center;
   align-items: center;
+  background: rgba(3, 8, 18, 0.88);
+  padding: 20px;
+}
+
+.panel {
+  width: 100%;
+  max-width: 420px;
   text-align: center;
-  padding: 25px;
-  gap: 18px;
+  padding: 30px 22px;
+  border-radius: 18px;
+  background: linear-gradient(145deg, #1b2c45, #101827);
+  border: 1px solid #527ba9;
+  box-shadow: 0 0 35px rgba(30, 130, 255, 0.2);
 }
 
-.overlay h1 {
-  font-size: clamp(38px, 9vw, 75px);
-  color: #69b8ff;
-  letter-spacing: 5px;
-  text-shadow: 0 0 20px #1476d5;
+.panel h1 {
+  font-size: 38px;
+  margin: 0 0 15px;
+  letter-spacing: 3px;
 }
 
-.overlay p {
-  max-width: 350px;
-  line-height: 1.6;
-  color: #c5d3e0;
+.panel p {
+  color: #c5d5e9;
+  line-height: 1.5;
 }
 
-.overlay button {
-  background: #1478d4;
+.panel button {
+  margin-top: 18px;
+  padding: 15px 30px;
+  border: 0;
+  border-radius: 10px;
+  background: #1686e8;
   color: white;
-  border: none;
-  border-radius: 9px;
-  padding: 17px 35px;
-  font-size: 17px;
+  font-size: 16px;
   font-weight: bold;
-  margin-top: 10px;
 }
 
 .hidden {
   display: none !important;
 }
 
-#reloadText {
-  position: absolute;
-  z-index: 8;
-  top: 43%;
-  left: 50%;
-  transform: translate(-50%,-50%);
-  color: #ffd45b;
-  font-weight: bold;
-  font-size: 22px;
-  display: none;
-  text-shadow: 0 2px 5px black;
-}
-
-#dashText {
-  position: absolute;
-  z-index: 5;
-  bottom: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 11px;
-  color: #8ecbff;
-  pointer-events: none;
-}
-
-@media (min-width: 850px) {
+@media (min-width: 800px) {
   #joystick {
-    left: 45px;
-    bottom: 45px;
+    left: 35px;
+    bottom: 55px;
   }
 
   #actionButtons {
     right: 35px;
-    bottom: 35px;
+    bottom: 55px;
+  }
+
+  #lookArea {
+    bottom: 30px;
   }
 }
